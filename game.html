@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="main.css">
+        <style>
+            h1{
+                font-family: cursive;
+                font-size: 50;
+                margin-top: 10px;
+                text-align: center;
+                color: white;
+            }
+            
+            p{
+                color: white;
+                text-align: center;
+            }
+            
+            .btns {
+                background-color: black;
+                font-family: Times New Roman;
+                border: 3px solid white;
+                color: white;
+                padding: 16px 32px;
+                text-align: center;
+                font-size: 25px;
+                transition: 0.2s;
+            }
+
+            .btns:hover {
+                background-color: white;
+                color: black;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    
+    <body>
+        
+        <div id="navbar">
+        <a href="index.html"><button class="btns" style="margin-left: 6%; width: 28%">Home</button></a>
+        <a href="about.html"><button class="btns" style="width: 28%">About</button></a>
+        <a href="https://github.com/arun-s-group/agilescrumproject/wiki"><button class="btns" style="margin-right: 6%; width: 28%">Wiki</button></a>
+        </div>
+        
+        
+        <h1 id="h">Cannonball Gaming</h1>
+        
+        <img src="downarrow.png" style="float: right; width: 6%;" class="arw">
+        
+        <img src="downarrow.png" style="float: left; width: 6%" class="arw">
+        
+        <p id="p" style="display: none"><b>Objective:</b> Avoid the Descending Cubes for As Long as Possible!</p>
+        
+        <center><button onclick="startGame()" id="startb">Start</button></center>
+        
+        <h1 id="over"></h1>
+        
+        <center><canvas id="myCanvas" width="900" height="625" style="border:2px solid #FFFFFF; background-image: url(techbg.png)">
+            Your browser does not support the HTML5 canvas tag.
+            </canvas></center>
+        
+        <br>
+        
+        <h1 style="display: none">Stats</h1>
+        
+        <button id="btn1" class="btn" style="margin-left: 5%; width: 30%" onclick="upDmg()">Damage Up (1)</button>
+        <button id="btn2" class="btn" style="align-content: center; width: 30%" onclick="upPSpeed()">Projectile Speed Up (1)</button>
+        <button id="btn3" class="btn" style="margin-right: : 5%; width: 30%" onclick="upSpeed()">Cannon Speed Up (1)</button>
+        
+        <img id="img1" src="ship.jpg" style="display: none">
+        <img id="img2" src="warning.png" style="display: none">
+        <img id="cannon" src="cannon.png" style="display: none">
+        
+        
+        
+        <script>
+            
+            function Fire(x, y, dx, dy, angle){
+               this.speed = pSpeed;
+               this.x = x;
+               this.y = y;
+               this.dx = this.speed*Math.cos(angle);
+               this.dy = this.speed*Math.sin(angle);
+           } 
+            Fire.prototype.draw = function(){
+                ctx.beginPath();
+                ctx.fillStyle="black";
+                ctx.arc(this.x,this.y,8,0,2*Math.PI);
+                ctx.fill();
+                ctx.closePath();
+            }
+            Fire.prototype.update = function(){
+                var dX = mouseX - cX;
+                var dY = mouseY - cY;
+                var ang = Math.atan2(dY, dX);
+                this.dx = this.speed*Math.cos(ang);
+                this.dy = this.speed*Math.sin(ang);
+                this.x += this.dx;
+                this.y += this.dy;
+                if(this.x <0 || this.x >canvas.width || this.y < 0 || this.y > canvas.height)
+                    return false;
+                return true;
+            }
+            
+            var canvas = document.getElementById("myCanvas");
+            var btn = document.getElementById("startb");
+            var p = document.getElementById("p");
+            var ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#000000";
+            ctx.font = "30px Arial";
+            var sD = document.getElementById("score");
+            var gO = document.getElementById("over");
+            //var bgSound = new sound("bg.mp3");
+            var endSound = new sound("clang.mp3");
+            var bgmusic = new sound("bgmusic.mp3");
+            var img1 = document.getElementById("img1");
+            var img2 = document.getElementById("img2");
+            var head = document.getElementById("h");
+            var navbar = document.getElementById("navbar");
+            
+            
+            var obstacleX = [];
+            var obstacleY = [];
+            var obstacleP = [];
+            var crash = false;
+            var score = 0;
+            var sX = 15;
+            var sY = 15;
+            var sFall = 0.25;
+            var sAccel = 0.08;
+            var w = canvas.width;
+            var h = canvas.height;
+            var rW = 25;
+            var rH = 25;
+            var oW = 35;
+            var oH = 35;
+            var cX = canvas.width/2;
+            var cY = canvas.height/2-50;
+            var cR = 15;
+            var points = 0;
+            var phase = 1;
+            var pSpeed = 12;
+            var fires = [];
+            var firesX = [];
+            var firesY = [];
+            var firesS = [];
+            var firesA = [];
+            var started = false;
+            var pause = false;
+            var lives = 1;
+            var spawnRate = 1000;
+            var oN = 0;
+            var oNdone = 0;
+            
+            var input = new Input();
+            
+            function Input(){
+                this.left = false;
+                this.right = false;
+                this.up = false;
+                this.down = false;
+            }
+            Input.prototype.set = function(evt, bool){
+                switch(evt.keyCode){
+                    case 87: this.up = bool; break;
+                    case 83: this.down = bool; break;
+                    case 65: this.left = bool;break;
+                    case 68: this.right = bool;break;
+                }
+            }
+            
+            canvas.addEventListener('mousemove',mouseMove);
+            canvas.addEventListener('mousedown', mouseDown);
+            canvas.addEventListener('keydown', keyDown);
+            canvas.addEventListener("keyup", keyUp);
+            
+            function mouseMove(evt){
+                mouseX = evt.x-270;
+                mouseY = evt.y-85;
+            }
+            
+            function mouseDown(evt){
+                if (!crash && started){
+                    fire();
+                }
+            }
+            
+            function keyDown(evt){
+                input.set(evt, true);
+           }
+
+            function keyUp(evt){
+                input.set(evt,false);
+            }
+            
+            
+            function fire(){
+                var dX = mouseX - cX;
+                var dY = mouseY - cY;
+                var ang = Math.atan2(dY, dX);
+                /*firesX.push(cX);
+                firesY.push(cY);
+                firesA.push(ang);
+                firesS.push(pSpeed);*/
+                var f = new Fire(cX, cY, dX, dY, ang);
+                fires.push(f);
+            }
+            
+            function fireDraw(){
+                for (j = 0; j<fires.length; j++){
+                    //firesX[j] += firesS[j]*Math.cos(firesA[j]);
+                    //firesY[j] -= firesS[j];
+                    /*if (firesY[j]<0){
+                        firesX.splice(j, 1);
+                        firesY.splice(j, 1);
+                        firesA.splice(j, 1);
+                        firesS.splice(j, 1);
+                    }
+                    else{
+                        ctx.beginPath();
+                        ctx.fillStyle="black";
+                        ctx.arc(firesX[j],firesY[j],8,0,2*Math.PI);
+                        ctx.fill();
+                        ctx.closePath();
+                    }*/
+                    fires[j].draw();
+                }
+            }
+            
+            function fireMove(){
+                /*if (input.left)cX = cX - sX;
+                if(input.right)cX = cX + sX;
+                if(input.up)cY = cY - sY;
+                if(input.down)cY = cY + sY;*/
+                for (j = 0; j<fires.length; j++){
+                    fires[j].x += fires[j].dx;
+                    fires[j].y += fires[j].dy;
+                }
+                projectileContact();
+            }
+            
+            
+            function startGame(){
+                if (btn.innerHTML == "Start"){
+                    ctx.drawImage(img1, 0, 0);
+                    var a = setInterval(fall, 20);
+                    var b = setInterval(addObstacle, spawnRate);
+                    var c = setInterval(scorePlus, 500);
+                    var e = setInterval(fireMove, 20);
+                    //var d = setInterval(fireDraw, 30);
+                    btn.innerHTML="Restart"
+                    btn.style.display = "none";
+                    p.style.display = "none";
+                    started = true;
+                    head.innerHTML = "Phase 1";
+                    bgmusic.play();
+                    navbar.style.display = "none";
+                }
+                else{
+                    bgmusic.play();
+                    obstacleX = [];
+                    obstacleY = [];
+                    obstacleP = [];
+                    btn.style.display = "none";
+                    crash = false;
+                    score = 0;
+                    sX = 15;
+                    sY = 15;
+                    sFall = 0.25;
+                    sAccel = 0;
+                    w = 600;
+                    h = 750;
+                    rW = 25;
+                    rH = 25;
+                    oW = 35;
+                    oH = 35;
+                    cX = 400;
+                    cY = 300;
+                    cR = 15;
+                    dmg = 1;
+                    pSpeed = 10;
+                    oN = 0;
+                    oNdone = 0;
+                    phase = 1;
+                    points = 0;
+                    ctx.font = "30px Arial";
+                    gO.innerHTML = "";
+                    head.innerHTML = "Phase " + phase;
+                    /*clearInterval(a);
+                    clearInterval(b);
+                    clearInterval(c);
+                    clearInterval(e);
+                    a = setInterval(fall, 20);
+                    b = setInterval(addObstacle, spawnRate);
+                    c = setInterval(scorePlus, 500);
+                    e = setInterval(fireMove, 20);*/
+                }
+            }
+            /*window.onload = function(){
+                ctx.drawImage(img1, 0, 0);
+                var a = setInterval(fall, 20);
+                var b = setInterval(addObstacle, 700-score/10);
+                var c = setInterval(scorePlus, 500);
+                //bgSound.play();
+            };*/
+            window.onkeydown = function(e) {
+               if (!crash){
+                   var key = e.keyCode ? e.keyCode : e.which;
+                   if (key == 68) {
+                        cX += sX;
+                       if (cX>w-rW){
+                           cX = w - rW;
+                       }
+                   }else if (key == 65) {
+                       cX -= sX;
+                       if (cX<0){
+                           cX = 0;
+                       }
+                   }else if (key == 87) {
+                       cY -= sY;
+                       if (cY<0){
+                           cY = 0;
+                       }
+                   }else if (key == 83) {
+                       cY += sY;
+                       if (cY>h-rH){
+                           cY = h - rH;
+                       }
+                    }
+                    clearMove();
+                    showScore();
+                    if (score<5 && score%2==0){
+                        ctx.drawImage(img2, 200, 400);
+                    }
+                    ctx.fillStyle = "#000000";
+               }
+            };
+            
+            function fall(){
+                clearFall();
+                for (i=0; i<obstacleX.length; i+=1){
+                    if (obstacleP[i]%3==1){
+                        ctx.fillStyle = "#FF0000";
+                    }
+                    else if (obstacleP[i]%3==2){
+                        ctx.fillStyle = "#ffe41c";
+                    }
+                    else{
+                        ctx.fillStyle = "#693a99";
+                    }
+                    obstacleY[i] = obstacleY[i] + sFall + sAccel*obstacleP[i];
+                    if (obstacleY[i]>canvas.height && !crash){
+                        endSound.play();
+                        //sD.innerHTML = "Score: " + score;
+                        gO.innerHTML = "Game Over! Score: " + score;
+                        fires = [];
+                        bgmusic.stop();
+                        ctx.clearRect(0, 0, w, h);
+                        ctx.drawImage(img1, 0, 0);
+                        crash = true;
+                        btn.style.display = "block";
+                        clearInterval(a);
+                        clearInterval(b);
+                        clearInterval(c);
+                        break;
+                    }
+                    else{
+                        contact(i);
+                        if (!crash && obstacleY[i]<650){
+                            ctx.fillRect(obstacleX[i], obstacleY[i], oW, oH);
+                            ctx.fillStyle = "white";
+                            if (obstacleP[i]>9){
+                                ctx.fillText(obstacleP[i], obstacleX[i]+6, obstacleY[i]+28);
+                            }
+                            else{
+                                ctx.fillText(obstacleP[i], obstacleX[i]+8, obstacleY[i]+28);
+                            }
+                        }
+                    }
+                }
+                if (score<5 && score%2==0){
+                    ctx.drawImage(img2, 340, 420);
+                }
+                showScore();
+                //fireDraw();
+            }
+            function addObstacle(){
+                /*if (pause){
+                    if (oNdone==25){
+                        pause = false;
+                        oN = 0;
+                        oNdone = 0;
+                    }
+                }
+                else{*/
+                    var xNew = Math.random()*(canvas.width-oW);
+                    var yNew = -15;
+                    obstacleX.push(xNew);
+                    obstacleY.push(yNew);
+                    obstacleP.push(phase);
+                    /*oN+=1;
+                    if (oN==25){
+                        pause = true;
+                    }
+                }*/
+            }
+            
+            function contact(n){
+                if (cX>obstacleX[n]-10 && cX<obstacleX[n] + oW + 10){
+                    if (cY>obstacleY[n]-10 && cY<obstacleY[n] + oH + 10 && !crash){
+                        endSound.play();
+                        //sD.innerHTML = "Score: " + score;
+                        gO.innerHTML = "Game Over! Score: " + score;
+                        fires = [];
+                        bgmusic.stop();
+                        ctx.clearRect(0, 0, w, h);
+                        ctx.drawImage(img1, 0, 0);
+                        crash = true;
+                        btn.style.display = "block";
+                        clearInterval(a);
+                        clearInterval(b);
+                        clearInterval(c);
+                    }
+                }
+            }
+            
+            function projectileContact(){
+                for (i=0; i<fires.length; i+=1){
+                    for (j=0; j<obstacleX.length; j+=1){
+                        if (fires[i].x+3>obstacleX[j] && fires[i].x-3<obstacleX[j]+oW && fires[i].y+3>obstacleY[j] && fires[i].y-3<obstacleY[j]+oH){
+                            if (obstacleP[j]<=dmg){
+                                fires.splice(i, 1);
+                                obstacleX.splice(j, 1);
+                                obstacleY.splice(j, 1);
+                                obstacleP.splice(j, 1);
+                                oNdone += 1;
+                            }
+                            else{
+                                obstacleP[j]-=dmg;
+                                fires.splice(i, 1);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function clearMove(){
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = "#000000";
+                ctx.drawImage(img1, 0, 0);
+                circ();
+                //ctx.fillRect(cX, cY, rW, rH);
+                for (i=0; i<obstacleX.length; i+=1){
+                    if (obstacleP[i]%3==1){
+                        ctx.fillStyle = "#FF0000";
+                    }
+                    else if (obstacleP[i]%3==2){
+                        ctx.fillStyle = "#ffe41c";
+                    }
+                    else{
+                        ctx.fillStyle = "#693a99";
+                    }
+                    ctx.fillRect(obstacleX[i]-obstacleP[i]*2, obstacleY[i], oW+obstacleP[i]*4, oHoW+obstacleP[i]*4);
+                    ctx.fillStyle = "FFFFFF";
+                    ctx.fillText(phase);
+                }
+                showScore();
+                fireDraw();
+            }
+            function clearFall(){
+                ctx.fillStyle = "#000000";
+                ctx.clearRect(0, 0, w, h);
+                ctx.drawImage(img1, 0, 0);
+                circ();
+                fireDraw();
+                showScore();
+                //ctx.fillRect(cX, cY, rW, rH);
+            }
+            function scorePlus(){
+                if (!crash){
+                    score+=1;
+                    if (score%25==0){
+                        phase+=1;
+                        points+=2;
+                        head.innerHTML = "Phase " + phase;
+                    }
+                    if (score%10==0){
+                        points+=1;
+                    }
+                }
+            }
+            function showScore(){
+                ctx.fillStyle = "#FFFFFF";
+                if (!crash){
+                    ctx.fillText("Score: " + score, 20, 40);
+                    ctx.fillText("Phase: " + phase, 20, 80);
+                    //ctx.fillText("Lives: " + lives, canvas.width-150, 80);
+                    ctx.fillText("Points: " + points, canvas.width-150, 40);
+                    /*ctx.fillText("Points: " + mouseX, canvas.width-150, 120);
+                    ctx.fillText("Points: " + mouseY, canvas.width-150, 160);
+                    ctx.fillText(cX + "  " + cY, canvas.width-150, 200);*/
+                }
+                else{
+                    ctx.fillStyle = "#000000";
+                    ctx.font = "50px Arial"
+                    ctx.fillText("Score: " + score, 350, 350);
+                    showScore();
+                }
+            }
+            function circ(){
+                /*ctx.fillStyle = "#000000";
+                ctx.beginPath();
+                ctx.arc(cX, cY, cR, 0, 2 * Math.PI);
+                ctx.fill();*/
+                if (started){
+                    var cannonImg = document.getElementById("cannon");
+                    ctx.save();
+                    ctx.translate(cX, cY);
+                    var angle = Math.atan2(mouseY-cY, mouseX-cX);
+                    ctx.rotate(angle);
+                    ctx.drawImage(cannonImg, -100, -125);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            
+            function sound(src) {
+                this.sound = document.createElement("audio");
+                this.sound.src = src;
+                this.sound.setAttribute("preload", "auto");
+                this.sound.setAttribute("controls", "none");
+                this.sound.style.display = "none";
+                document.body.appendChild(this.sound);
+                this.play = function(){
+                    this.sound.play();
+                }
+                this.stop = function(){
+                    this.sound.pause();
+                }
+            }
+            
+            var dmg = 1;
+            var sLevel = 1;
+            var psLevel = 1;
+            
+            var btn1= document.getElementById("btn1");
+            var btn2= document.getElementById("btn2");
+            var btn3= document.getElementById("btn3");
+            
+            function upSpeed(){
+                if (points>=sLevel && sX<25){
+                    points-=sLevel;
+                    sX+=3;
+                    sY+=3;
+                    sLevel+=1;
+                }
+            }
+            function upPSpeed(){
+                if (points>=psLevel && pSpeed<30){
+                    points-=psLevel;
+                    pSpeed+=5;
+                    psLevel+=1;
+                }
+            }
+            function upDmg(){
+                if (points>=dmg && dmg<10){
+                    points-=dmg;
+                    dmg+=1;
+                }
+            }
+            
+        </script>
+        
+    </body>
+</html>
